@@ -10,6 +10,8 @@ import sys
 
 #Custom scripts
 import backend.myAPI as myAPI
+import db.weather
+import db.db_connect as DB
 
 
 PI = False
@@ -96,21 +98,27 @@ def statusBattery():
     
 @app.route('/api/status/led', methods=["GET"])
 def getSerial():
+    data = DB.getLED()
+    app.logger.warn(data)
     
-    dir = CWD+'/arduino/led.txt'
-    f = open(dir)
-    content = f.read()
+    # dir = CWD+'/arduino/led.txt'
+    # f = open(dir)
+    # content = f.read()
     
-    dataPoints = [int(i) for i in content.split()]
-    labels = ['High' if i == 1 else 'Low' for i in dataPoints]
+    # dataPoints = [int(i) for i in content.split()]
+    labels = ['High' if i == 1 else 'Low' for i in data]
     
     return {
-        "direction": 'top',
+        "direction": 'top' if data[-1] == 1 else 'bottom',
         "icon": "default",
-        'title': 'Battery Reserve',
-        'dataPoints': dataPoints,
+        'title': 'LED LIGHT',
+        'dataPoints': data,
         'labels': labels,
     }
+    
+@app.route('/api/weather', methods=["GET"])
+def weather():
+    return db.weather.getWeather()
 
 
 # @app.route('/api/db', methods=["GET"])

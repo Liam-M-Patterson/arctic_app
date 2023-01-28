@@ -1,11 +1,15 @@
 import asyncio
 import serial_asyncio
 import os
+import sys
+import db.db_connect as DB
+
+ROOT_DIR = os.environ.get("ROOT_DIR")
 
 def writeToFile(data):
     
     num = '1\n' if data == 'HIGH' else '0\n'
-    file = open(os.getcwd()+'/arduino/led.txt', 'a')
+    file = open(ROOT_DIR+'/arduino/led.txt', 'a')
     file.write(num)
     file.close()
 
@@ -37,17 +41,22 @@ async def recv(r):
             break
         data = msg.rstrip().decode()
         print(f'received: {data}')
-        writeToFile(data)
+        # writeToFile(data)
+        DB.updateLED(data)
+        
         
 
-def startLoop(isPi):
-    print('isPi in asyncSerialReader', isPi)
+def startLoop(port):
+    # print('isPi in asyncSerialReader', isPi)
     
-    port = '/dev/ttyACM0' if isPi else './COM3'
+    # port = '/dev/ttyACM0' if isPi else './COM3'
     loop = asyncio.get_event_loop()
     
     loop.run_until_complete(main(port))
     loop.close()
     
 if __name__ == '__main__':
-    startLoop(True)
+    port = sys.argv[1]
+    print('starting async reading')
+    startLoop(port)
+    

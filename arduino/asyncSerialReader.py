@@ -1,10 +1,10 @@
 import asyncio
 import serial_asyncio
-import os
 import sys
 import db.db_connect as DB
 
-ROOT_DIR = os.environ.get("ROOT_DIR")
+# SOME ENV VARIABLES
+from config import PI, ROOT_DIR
 
 def writeToFile(data):
     

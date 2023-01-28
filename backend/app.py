@@ -14,10 +14,11 @@ import db.weather
 import db.db_connect as DB
 
 
-PI = False
-if sys.platform != 'win32':
+# SOME ENV VARIABLES
+from config import PI, ROOT_DIR
+
+if PI:
     import camera.camera as camera
-    PI = True
 else:
     def camera():
         def takePicture():
@@ -26,10 +27,10 @@ else:
         print('on windows')
 
 CWD = os.getcwd()
+print(PI, ROOT_DIR)
 
 app = Flask(__name__)
 CORS(app)
-
 
 @app.route('/')
 def home():
@@ -46,16 +47,17 @@ def index():
 @app.route('/api/take/img', methods=["GET"])
 def takeNewImage():
     app.logger.info('new image')
-    app.logger.info(CWD)
+    app.logger.info(ROOT_DIR)
     app.logger.info('going to take new image')
-    file = 'image.png'
-    dir = CWD+'/camera/'+file
+    
+    dir = ROOT_DIR+'camera/image.png'
+    app.logger.info(dir)
     camera.takePicture(dir)
     return send_file(dir)
     
 @app.route('/api/img', methods=["GET"])
 def getImage():
-    return send_file(CWD+'/camera/img.png')
+    return send_file(ROOT_DIR+'camera/image.png')
 
 
 @app.route('/api/status/solar', methods=["GET"])
@@ -98,14 +100,10 @@ def statusBattery():
     
 @app.route('/api/status/led', methods=["GET"])
 def getSerial():
+    
     data = DB.getLED()
     app.logger.warn(data)
     
-    # dir = CWD+'/arduino/led.txt'
-    # f = open(dir)
-    # content = f.read()
-    
-    # dataPoints = [int(i) for i in content.split()]
     labels = ['High' if i == 1 else 'Low' for i in data]
     
     return {

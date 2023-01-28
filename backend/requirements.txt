@@ -1,0 +1,9 @@
+Flask==2.2.2
+
+flask_cors==3.0.10
+# random
+# time
+sqlalchemy
+flask_sqlalchemy
+picamera
+asyncio

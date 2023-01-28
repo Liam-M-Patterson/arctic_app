@@ -2,4 +2,13 @@ arduino/asyncSerial.py
 arduino/serialread.py
 arduino/test.py
 arduino/led.txt
+
+backend/__pycache__
+backend/Dockerfile
+
+camera/img.png
+camera/output
+camera/__pycache__
+
 *__pycache__
+docker-compose.yml

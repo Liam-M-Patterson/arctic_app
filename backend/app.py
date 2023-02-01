@@ -1,5 +1,5 @@
 from flask import Flask
-from flask import send_file
+from flask import send_file, request, jsonify
 from flask_cors import CORS
 import random
 # from flask_sqlalchemy import SQLAlchemy
@@ -71,6 +71,7 @@ def statusSolar():
         'title': 'Solar Energy',
         'dataPoints': dataPoints,
         'labels': labels,
+        'tooltipLabel': 'UV Index',
     }
 
 @app.route('/api/status/wind', methods=["GET"])
@@ -83,6 +84,7 @@ def statusWind():
         'title': 'Wind Energy',
         'dataPoints': dataPoints,
         'labels': labels,
+        'tooltipLabel': 'km/h',
     }
 
 @app.route('/api/status/battery', methods=["GET"])
@@ -95,6 +97,7 @@ def statusBattery():
         'title': 'Battery Reserve',
         'dataPoints': dataPoints,
         'labels': labels,
+        'tooltipLabel': '%',
     }
 
     
@@ -112,41 +115,38 @@ def getSerial():
         'title': 'LED LIGHT',
         'dataPoints': data,
         'labels': labels,
+        'tooltipLabel': 'State',
     }
+
+    
+@app.route('/api/status/ledTime', methods=["GET"])
+def getLedTime():
+    
+    data = DB.getLED()
+    app.logger.warn(data)
+    
+    labels = ['Higher' if i == 1 else 'Lower' for i in data]
+    
+    return {
+        "direction": 'top' if data[-1] == 1 else 'bottom',
+        "icon": "default",
+        'title': 'LED LIGHT',
+        'dataPoints': data,
+        'labels': labels,
+        'tooltipLabel': 'State',
+    }
+
+@app.route('/api/update/led', methods=["GET"])
+def updateLED():
+    
+    data = request.args.get('message')
+    DB.addMessagetoSendArduino(data)
+    
+    return {'data': data}
     
 @app.route('/api/weather', methods=["GET"])
 def weather():
     return db.weather.getWeather()
 
-
-# @app.route('/api/db', methods=["GET"])
-# def dbTest():
-    
-#     db_name = 'sensor'
-#     db_user = 'root'
-#     db_pass = 'password'
-#     db_host = 'postgres_db'
-#     db_port = '5432'
-
-#     # Connecto to the database
-#     db_string = 'postgres://{}:{}@{}:{}/{}'.format(db_user, db_pass, db_host, db_port, db_name)
-#     db = SQLAlchemy.create_engine(db_string)
-    
-#     def add_new_row(n):
-#         # Insert a new number into the 'numbers' table.
-#         db.execute("INSERT INTO numbers (number,timestamp) "+"VALUES ("+str(n) + "," + str(int(round(time.time() * 1000))) + ");")
-
-#     def get_last_row():
-#         # Retrieve the last number inserted inside the 'numbers'
-#         query = "" + "SELECT number " + "FROM numbers " + "WHERE timestamp >= (SELECT max(timestamp) FROM numbers)" + "LIMIT 1"
-
-#         result_set = db.execute(query)  
-#         for (r) in result_set:  
-#             return r[0]
-        
-#     # while True:
-#     add_new_row(random.randint(1,100000))
-#     print('The last value insterted is: {}'.format(get_last_row()))
-#         # time.sleep(5)
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0')

@@ -8,7 +8,7 @@ from config import PI, ROOT_DIR
 def updateLED(reading):
     
     state = 1 if reading == "HIGH" else 0
-    print('db connect dir: ',ROOT_DIR+'db/sensors.db')
+    # print('db connect dir: ',ROOT_DIR+'db/sensors.db')
     conn = sqlite3.connect(ROOT_DIR+'db/sensors.db')
     conn.execute("INSERT INTO LED (state) VALUES (?);", (state, ))
     conn.commit()
@@ -21,7 +21,6 @@ def getLED():
     conn = sqlite3.connect(ROOT_DIR+'db/sensors.db')
     cursor = conn.execute("SELECT * FROM LED;")
     for row in cursor:
-        print(row)
         
         # res[row[0]] = row
         res.append(row[1])
@@ -30,9 +29,10 @@ def getLED():
     return res
 
 
+
 def getArduinoMessages(curr_time):
     
-    print('getting arduino messages since: ', curr_time)
+    # print('getting arduino messages since: ', curr_time)
     
     res = []
     
@@ -80,5 +80,5 @@ if __name__ == '__main__':
     setArduinoMessageSent(2)
     
     getArduinoMessages(datetime.datetime.utcnow())
-    print('above')
+    
     # print(getLED())    

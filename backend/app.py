@@ -105,7 +105,6 @@ def statusBattery():
 def getSerial():
     
     data = DB.getLED()
-    app.logger.warn(data)
     
     labels = ['High' if i == 1 else 'Low' for i in data]
     
@@ -123,7 +122,6 @@ def getSerial():
 def getLedTime():
     
     data = DB.getLED()
-    app.logger.warn(data)
     
     labels = ['Higher' if i == 1 else 'Lower' for i in data]
     
@@ -147,6 +145,11 @@ def updateLED():
 @app.route('/api/weather', methods=["GET"])
 def weather():
     return db.weather.getWeather()
+
+@app.route('/api/liam', methods=["GET"])
+def liam():
+    
+    return {'state': '2'}
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0')

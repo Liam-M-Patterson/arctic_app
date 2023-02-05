@@ -74,11 +74,29 @@ def addMessagetoSendArduino(message):
     conn.close()
     
 
+# Update the images database with a new entry to get the unique image filename
+def createImageName():
+    conn = sqlite3.connect(ROOT_DIR+'db/sensors.db')
+    
+    stmt = "INSERT INTO images (filename) VALUES ('image');"
+    
+    conn.execute(stmt)
+    conn.commit()
+    
+    query = "SELECT filename FROM images ORDER BY id DESC LIMIT 1;"
+    cursor = conn.execute(query)
+    filename = cursor.fetchone()[0]
+    
+    conn.close()
+    return filename
+    
+
 if __name__ == '__main__':
-    updateLED("HIGH")
+    createImageName()
+    # updateLED("HIGH")
     
-    setArduinoMessageSent(2)
+    # setArduinoMessageSent(2)
     
-    getArduinoMessages(datetime.datetime.utcnow())
+    # getArduinoMessages(datetime.datetime.utcnow())
     
     # print(getLED())    

@@ -1,16 +1,15 @@
-import sys
+# SOME ENV VARIABLES
+from config import PI
 
-PI = False
-if sys.platform != 'win32':
-	from picamera import PiCamera
-	PI = True
-from time import sleep
+if PI:
+    from picamera import PiCamera
 
 def takePicture(dir='img.png', form='png'):
     
 	if PI:
 	# print('taking picture: ', dir)
 		camera = PiCamera()
+		# camera.resolution = (602, 452)
 		camera.start_preview()
 		camera.capture(dir, format=form)
 		camera.stop_preview()
@@ -19,7 +18,7 @@ def takePicture(dir='img.png', form='png'):
 		print('cannot access pi camera')
 	# print('closed camera')
 
-if __name__ == '__main__':
+if __name__ == '__main__':    
     takePicture()
     print('done main')
 

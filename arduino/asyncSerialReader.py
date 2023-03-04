@@ -15,8 +15,8 @@ from config import PI, ROOT_DIR
 #     file.write(num)
 #     file.close()  
 
-
-async def send(w):
+# Need to process the msg before sending to send to the right arudino
+async def send(w1, w2):
     
     msgs = DB.getArduinoMessages(datetime.datetime.utcnow())
     
@@ -27,7 +27,7 @@ async def send(w):
         
         message += '\n'
         
-        w.write(message.encode())
+        w1.write(message.encode())
         DB.setArduinoMessageSent(id)
         # print(f'sent: {message.encode().rstrip()}')
         await asyncio.sleep(0.5)
@@ -37,8 +37,14 @@ async def recv(r):
     msg = await r.readuntil(b'\n')
     if msg.rstrip() == b'DONE':
         print('Done receiving')
-    
-    data = msg.rstrip().decode()
+        
+    print(msg)
+    try:
+        data = msg.rstrip().decode()
+    except: 
+        print(msg, " is not encoded properly")
+        data = ''
+        
     print(f'received: {data}')
     
     DB.updateLED(data)
@@ -67,19 +73,25 @@ async def sensorLogic(req):
         
     return newReq
 
-async def main(port):
+async def main(port1, port2):
     
-    reader, writer = await serial_asyncio.open_serial_connection(url=port, baudrate=9600)
-    
+    reader, writer = await serial_asyncio.open_serial_connection(url=port1, baudrate=9600)
+    try:
+        reader2, writer2 = await serial_asyncio.open_serial_connection(url=port2, baudrate=9600)
+    except:
+        print('Could not find device attached to ', port2)
+        reader2, writer2 = reader, writer
     myAPI = {'state': '0'}
     
     while True:
         
-        await send(writer)
-        msg = await recv(reader)    
         
-        if msg == 'HIGH':
-            myAPI = await sensorLogic(myAPI)
+        await send(writer, writer2)
+        msg = await recv(reader)    
+        msg = await recv(reader2)    
+        
+        # if msg == 'HIGH':
+        #     myAPI = await sensorLogic(myAPI)
         
     
 
@@ -91,9 +103,13 @@ def startLoop(port):
 
     
 if __name__ == '__main__':
+    print('starting to listen')
     
-    
-    port = sys.argv[1]    
+    port1 = sys.argv[1]
+    if len(sys.argv) >= 3:
+        port2 = sys.argv[2]    
+    else:
+        port2 = './COM4'
     
     # startLoop(port)
-    asyncio.run(main(port))
+    asyncio.run(main(port1, port2))

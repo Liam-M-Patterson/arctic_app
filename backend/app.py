@@ -17,18 +17,24 @@ import db.weather
 import db.db_connect as DB
 
 
+# only needed for demo with laptop
+import cv2
+
 # SOME ENV VARIABLES
 from config import PI, ROOT_DIR, GCLOUD_URL
 
 if PI:
     import camera.camera as camera
 else:
-    def camera():
-        def takePicture():
-            print('on windows')
     def read():
         print('on windows')
-
+        
+# def takePicture():
+#     cam = cv2.VideoCapture(0)
+    
+#     cv2.namedWindow("test")
+    
+#     print('on windows')
 CWD = os.getcwd()
 # print(PI, ROOT_DIR)
 
@@ -87,8 +93,8 @@ def takeNewImage():
     
     # TAKE IMAGE USING PI Camera
     if PI:
-        camera.takePicture(srcImage)
-    
+        camera.takePicture(srcImage)        
+        
     # Encode image to send to the front end
     with open(srcImage, 'rb') as f:
         encoded_string = base64.b64encode(f.read()).decode('utf-8')
@@ -124,8 +130,15 @@ def getDetectImage():
 
 @app.route('/api/get/img', methods=["GET"])
 async def getImage():
-    app.logger.info("/api/get/img")
-    return send_file(ROOT_DIR+'camera/image.png')
+    
+    filename = 'image.png'
+    srcImage = ROOT_DIR+'camera/'+filename
+        
+    # Encode image to send to the front end
+    with open(srcImage, 'rb') as f:
+        encoded_string = base64.b64encode(f.read()).decode('utf-8')
+    
+    return jsonify({'image': encoded_string, 'filename': filename})
     
     
 # TEST ROUTES FOR WIN DEV 

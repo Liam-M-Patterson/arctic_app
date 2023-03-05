@@ -1,6 +1,7 @@
 from flask import Flask
 from flask import send_file, request, jsonify
 from flask_cors import CORS
+from flask_socketio import SocketIO
 
 import random
 import time
@@ -10,6 +11,7 @@ import threading
 import base64 
 import json
 import requests
+# import asyncio
 
 #Custom scripts
 import backend.myAPI as myAPI
@@ -29,22 +31,23 @@ else:
     def read():
         print('on windows')
         
-# def takePicture():
-#     cam = cv2.VideoCapture(0)
-    
-#     cv2.namedWindow("test")
-    
-#     print('on windows')
-CWD = os.getcwd()
-# print(PI, ROOT_DIR)
 
+CWD = os.getcwd()
 app = Flask(__name__)
+# CORS(app, resources={r"/*": {"origins": "http://localhost:3000"}})
 CORS(app)
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 @app.route('/')
 def home():
     return myAPI.home()
 
+@app.route('/liam')
+def liamEmit():
+    app.logger.info('this is the normal backend ')
+    socketio.emit('liam', 'please')
+    return 'this is working'
+    
 @app.route('/cloud')
 def cloudHome():
     return requests.get(GCLOUD_URL)
@@ -83,7 +86,6 @@ def index():
     return send_file(detectImage)
     
     
-
 @app.route('/api/take/img', methods=["GET"])
 def takeNewImage():
     
@@ -100,11 +102,34 @@ def takeNewImage():
         encoded_string = base64.b64encode(f.read()).decode('utf-8')
     
     return jsonify({'image': encoded_string, 'filename': filename})
+
+def packageImageData(imageFilename):
+    # Encode image to send to the front end
+    with open(imageFilename, 'rb') as f:
+        encoded_string = base64.b64encode(f.read()).decode('utf-8')
     
-@app.route('/api/detect/img', methods=["GET", "POST"])
-def getDetectImage():
+    return {'image': encoded_string, 'filename': imageFilename}   
     
-    requestDict = json.loads(request.data.decode('utf-8'))
+@socketio.on('take img') 
+def socket_takeNewImage():
+    
+    # print('socket_takeNewImage')
+    # imgData = takeNewImage()
+    # imgData = captureImage('socketImage.png')
+    
+    # TAKE PICTURE, simulated with sending exisiting image
+    filename = 'image.png'
+    srcImage = ROOT_DIR+'camera/'+filename
+    
+    imgData = packageImageData(srcImage)
+    socketio.emit('img', imgData)
+    
+    detectedImg = makeDetectImageRequest(imgData)
+    imgData = packageImageData(detectedImg)
+    socketio.emit('detected img', imgData)
+
+def makeDetectImageRequest(requestDict):
+    
     # Make filenames
     filename = requestDict['filename']
     srcImage = ROOT_DIR+'camera/'+filename
@@ -125,6 +150,14 @@ def getDetectImage():
     # write the decoded image to file
     with open(detectImage, 'wb') as f:
         f.write(decoded_image)
+    
+    return detectImage
+    
+@app.route('/api/detect/img', methods=["GET", "POST"])
+def getDetectImage():
+    
+    requestDict = json.loads(request.data.decode('utf-8'))     
+    detectImage = makeDetectImageRequest(requestDict)
     
     return send_file(detectImage)
 
@@ -191,6 +224,22 @@ def getDetectedImage():
     return send_file(file)
     
     
+# Socket Hooks
+@socketio.on('connect')
+def handle_connect():
+    print('socket connected in flask app')
+    # socketio.emit('liam', 'Hello from Socket')
+    socketio.emit('done connect')
+    # return
+
+@socketio.on('disconnect')
+def disconnect():
+    print('socket disconnected')
+    
+@socketio.on('connected')
+def handleLiam():
+    print('socket is listening ')
+    socketio.emit('message', 'THIS IS FROM FLASK!!')
 
 
 @app.route('/api/status/solar', methods=["GET"])
@@ -285,4 +334,8 @@ def liam():
     return {'state': '2'}
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0')
+    # tracemalloc.start()
+    # app.run(debug=True, host='0.0.0.0')
+    socketio.run(app, port=5000)
+    
+    

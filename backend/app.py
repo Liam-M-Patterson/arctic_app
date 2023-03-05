@@ -20,7 +20,7 @@ import db.db_connect as DB
 
 
 # only needed for demo with laptop
-import cv2
+# import cv2
 
 # SOME ENV VARIABLES
 from config import PI, ROOT_DIR, GCLOUD_URL
@@ -96,12 +96,9 @@ def takeNewImage():
     # TAKE IMAGE USING PI Camera
     if PI:
         camera.takePicture(srcImage)        
-        
-    # Encode image to send to the front end
-    with open(srcImage, 'rb') as f:
-        encoded_string = base64.b64encode(f.read()).decode('utf-8')
     
-    return jsonify({'image': encoded_string, 'filename': filename})
+    imgData = packageImageData(srcImage)
+    return jsonify(imgData)
 
 def packageImageData(imageFilename):
     # Encode image to send to the front end
@@ -114,12 +111,17 @@ def packageImageData(imageFilename):
 def socket_takeNewImage():
     
     # print('socket_takeNewImage')
-    # imgData = takeNewImage()
-    # imgData = captureImage('socketImage.png')
-    
     # TAKE PICTURE, simulated with sending exisiting image
-    filename = 'image.png'
-    srcImage = ROOT_DIR+'camera/'+filename
+    if PI:
+        filename = DB.createImageName()
+        srcImage = ROOT_DIR+'camera/'+filename
+    else:
+        filename = 'image.png'
+        srcImage = ROOT_DIR+'camera/'+filename
+        
+    # TAKE IMAGE USING PI Camera
+    if PI:
+        camera.takePicture(srcImage)    
     
     imgData = packageImageData(srcImage)
     socketio.emit('img', imgData)
@@ -131,8 +133,8 @@ def socket_takeNewImage():
 def makeDetectImageRequest(requestDict):
     
     # Make filenames
-    filename = requestDict['filename']
-    srcImage = ROOT_DIR+'camera/'+filename
+    filename = requestDict['filename'].split('/')[-1]
+    srcImage = ROOT_DIR+'camera/'+filename 
     detectImage = ROOT_DIR+'camera/output/det_'+filename
     
     # ENCODE IMAGE AS STRING TO POST

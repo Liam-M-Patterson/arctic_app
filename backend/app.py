@@ -146,6 +146,7 @@ def makeDetectImageRequest(requestDict):
                              json={'image': encoded_string, 'filename': 'image.png'}
                              ).json()
     
+    print("gcloud res:", response)
     # decode the returned image
     decoded_image = base64.b64decode(response['image'].encode('utf-8'))
     
@@ -157,7 +158,7 @@ def makeDetectImageRequest(requestDict):
     
 @app.route('/api/detect/img', methods=["GET", "POST"])
 def getDetectImage():
-    
+    print("going to detec")
     requestDict = json.loads(request.data.decode('utf-8'))     
     detectImage = makeDetectImageRequest(requestDict)
     

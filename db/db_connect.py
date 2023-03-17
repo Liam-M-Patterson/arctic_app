@@ -2,6 +2,7 @@ import sqlite3
 import os 
 
 import datetime
+
 # SOME ENV VARIABLES
 from config import PI, ROOT_DIR
 
@@ -29,6 +30,25 @@ def getLED():
     return res
 
 
+
+def getLidarMessages(curr_time):
+    
+    # print('getting arduino messages since: ', curr_time)
+    
+    res = []
+    
+    conn = sqlite3.connect(ROOT_DIR+'db/sensors.db')
+    
+    query = "SELECT * FROM sendToArduino WHERE sent = ? AND timestamp <= ? and message LIKE 'L%' ;"
+    params = (0, curr_time)
+    
+    cursor = conn.execute(query, params)
+    results = cursor.fetchall()
+    
+    for row in results:
+        res.append(row)
+    conn.close()
+    return res
 
 def getArduinoMessages(curr_time):
     

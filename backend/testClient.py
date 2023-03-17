@@ -1,5 +1,9 @@
 import socketio
 import asyncio
+import db.db_connect as DB
+import arduino.sensorLogic as sensor
+import datetime 
+import sys
 
 async def init():
     sio = socketio.AsyncClient()
@@ -32,4 +36,16 @@ async def main():
     #     sio.emit('liam')
 
 if __name__ == '__main__':
-    asyncio.run(main())
+    # asyncio.run(main())
+    
+    angle = sys.argv[1]
+    
+    
+    msgs = DB.getLidarMessages(datetime.datetime.utcnow())
+    print(msgs)
+    
+    DB.addMessagetoSendArduino(sensor.sendLidar(10, angle))
+    
+    msgs = DB.getLidarMessages(datetime.datetime.utcnow())
+    for msg in msgs:
+        print(msg[1])

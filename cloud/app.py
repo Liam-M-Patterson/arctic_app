@@ -24,11 +24,10 @@ def home():
 # original function for just yolov3
 @app.route('/api', methods=["GET", "POST"])
 def index():
-    # app.logger.info('got request')
+    app.logger.info('got request')
     
     requestDict = json.loads(request.data.decode('utf-8'))
-    # print(requestDict)
-    # print(requestDict['image'])
+    currModel = requestDict['model'] 
     
     decoded_image = base64.b64decode(requestDict['image'].encode('utf-8'))
     filename = requestDict['filename']
@@ -36,18 +35,26 @@ def index():
     srcImage = ROOT_DIR+'backend/input/'+filename
     dstDetectDir = ROOT_DIR+'backend/output'
     dstDetectImage = dstDetectDir+'/det_'+filename
-    
+        
     with open(srcImage, 'wb') as f:
         f.write(decoded_image)
         
-    pythonCmd = 'python3'
-    print("going to run detect")    
-    def detect_object():
-        process = subprocess.Popen([pythonCmd, ROOT_DIR+"intrusion/detect.py", 
+    print(currModel)
+    
+    if currModel == 'yolov3':
+            
+        cmds = ['python3', ROOT_DIR+"intrusion/detect.py", 
                                     '--images', srcImage, 
                                     '--det', dstDetectDir,
                                     '--root_dir', ROOT_DIR]
-                                   ).wait()
+    elif currModel == 'yolov5l':
+        
+        cmds = ['python3', ROOT_DIR+"yolov5/detect.py", 
+                                    '--source', srcImage, 
+                                    '--weights', ROOT_DIR+"yolov5/weights/yolov5l.pt"]
+    
+    def detect_object():
+        process = subprocess.Popen(cmds).wait()
     
     print('about to start thread')
     thread = threading.Thread(target=detect_object)

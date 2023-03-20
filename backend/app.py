@@ -38,6 +38,8 @@ app = Flask(__name__)
 CORS(app)
 socketio = SocketIO(app, cors_allowed_origins="*")
 
+intrusionModel = 'yolov3'
+
 @app.route('/')
 def home():
     return myAPI.home()
@@ -86,6 +88,13 @@ def index():
     return send_file(detectImage)
     
     
+def packageImageData(imageFilename):
+    # Encode image to send to the front end
+    with open(imageFilename, 'rb') as f:
+        encoded_string = base64.b64encode(f.read()).decode('utf-8')
+    
+    return {'image': encoded_string, 'filename': imageFilename}   
+
 @app.route('/api/take/img', methods=["GET"])
 def takeNewImage():
     
@@ -99,36 +108,7 @@ def takeNewImage():
     
     imgData = packageImageData(srcImage)
     return jsonify(imgData)
-
-def packageImageData(imageFilename):
-    # Encode image to send to the front end
-    with open(imageFilename, 'rb') as f:
-        encoded_string = base64.b64encode(f.read()).decode('utf-8')
     
-    return {'image': encoded_string, 'filename': imageFilename}   
-    
-@socketio.on('take img') 
-def socket_takeNewImage():
-    
-    # print('socket_takeNewImage')
-    # TAKE PICTURE, simulated with sending exisiting image
-    if PI:
-        filename = DB.createImageName()
-        srcImage = ROOT_DIR+'camera/'+filename
-    else:
-        filename = 'image.png'
-        srcImage = ROOT_DIR+'camera/'+filename
-        
-    # TAKE IMAGE USING PI Camera
-    if PI:
-        camera.takePicture(srcImage)    
-    
-    imgData = packageImageData(srcImage)
-    socketio.emit('img', imgData)
-    
-    detectedImg = makeDetectImageRequest(imgData)
-    imgData = packageImageData(detectedImg)
-    socketio.emit('detected img', imgData)
 
 def makeDetectImageRequest(requestDict):
     
@@ -143,10 +123,13 @@ def makeDetectImageRequest(requestDict):
          
     # MAKE POST request to Google VM, with the encoded image, and filename
     response = requests.post(GCLOUD_URL+'/api', 
-                             json={'image': encoded_string, 'filename': 'image.png'}
+                             json={
+                                 'image': encoded_string,
+                                 'filename': 'image.png',
+                                 'model': intrusionModel
+                                 }
                              ).json()
     
-    print("gcloud res:", response)
     # decode the returned image
     decoded_image = base64.b64decode(response['image'].encode('utf-8'))
     
@@ -155,11 +138,36 @@ def makeDetectImageRequest(requestDict):
         f.write(decoded_image)
     
     return detectImage
+
+@socketio.on('take/img') 
+def socket_takeNewImage():
+    
+    # print('socket_takeNewImage')
+    # TAKE PICTURE, simulated with sending exisiting image
+    if PI:
+        filename = DB.createImageName()
+        srcImage = ROOT_DIR+'camera/'+filename
+        camera.takePicture(srcImage)
+    else:
+        filename = 'image.png'
+        srcImage = ROOT_DIR+'camera/'+filename
+        
+    # TAKE IMAGE USING PI Camera
+    # if PI:
+    #     camera.takePicture(srcImage)    
+    
+    imgData = packageImageData(srcImage)
+    socketio.emit('img', imgData)
+    
+    detectedImg = makeDetectImageRequest(imgData)
+    imgData = packageImageData(detectedImg)
+    socketio.emit('detected img', imgData)
     
 @app.route('/api/detect/img', methods=["GET", "POST"])
 def getDetectImage():
     print("going to detec")
     requestDict = json.loads(request.data.decode('utf-8'))     
+    
     detectImage = makeDetectImageRequest(requestDict)
     
     return send_file(detectImage)
@@ -177,6 +185,15 @@ async def getImage():
     return jsonify({'image': encoded_string, 'filename': filename})
     
     
+@app.route('/api/set/model', methods=["GET", "POST"])
+def changeIntrusionModel():
+    
+    global intrusionModel
+    requestDict = json.loads(request.data.decode('utf-8'))
+    intrusionModel = requestDict['intrusionModel']
+    return jsonify({'model': intrusionModel})
+    
+
 # TEST ROUTES FOR WIN DEV 
 @app.route('/api/test/img', methods=["GET"])
 def createImageName():
@@ -207,10 +224,6 @@ def captureImage(filename):
     with open(srcImage, 'rb') as f:
         encoded_string = base64.b64encode(f.read()).decode('utf-8')
     return jsonify({'image': encoded_string, 'filename': dstDetectImage})
-
-    # return send_file(ROOT_DIR+'camera/image.png')
-    # return jsonify({'image': ROOT_DIR+'camera/image.png', 'file': filename})
-    # return jsonify({'image': send_file(ROOT_DIR+'camera/image.png'), 'file': filename})
 
 
 @app.route('/api/test/detect', methods=["POST"])

@@ -98,12 +98,6 @@ async def recv(r):
         print(msg, " is not encoded properly")
         data = ''
     
-    # try:
-    #     data = msg.rstrip().decode('utf-8')
-    # except: 
-    #     print(msg, " is not encoded properly")
-    #     data = ''
-    
     if DEBUG:    
         print(f'received: {data}')
     
@@ -118,27 +112,15 @@ async def myReq():
             
             r =  await response.json()
             return r
-
-async def sensorLogic(req):
-    
-    newReq = await myReq()
-    if newReq['state'] != req['state']:
-        
-        if newReq['state'] == '1':
-            DB.addMessagetoSendArduino('H2500\n')
-            DB.addMessagetoSendArduino('L500\n')
-        elif newReq['state'] == '2':
-            DB.addMessagetoSendArduino('H500\n')
-            DB.addMessagetoSendArduino('L4500\n')
-        
-    return newReq
     
 async def updateWeather():
     
     sensor.makeRequest()
-    # wind = sensor.getCurrentWind()
-    wind = sensor.getWind4Day()
+    wind = sensor.getCurrentWind()
+    
     print("new wind: ", wind)
+    return wind
+    
     
 def getLidarAngle(radarDistance, radarAngle):
     
@@ -157,27 +139,27 @@ def getLidarAngle(radarDistance, radarAngle):
     elif radarAngle >= 135:
         return radarAngle - 10
     
+    """
+    print("initial angle", radarAngle)
+    print("initial distance", radarDistance)
     
-    # print("initial angle", radarAngle)
-    # print("initial distance", radarDistance)
+    angleC = math.radians(90 + 180 - radarAngle)
+    distC = math.sqrt(radarDistance**2 + 10**2 - 2*radarDistance*10 *math.cos(angleC))
     
-    # angleC = math.radians(90 + 180 - radarAngle)
-    # distC = math.sqrt(radarDistance**2 + 10**2 - 2*radarDistance*10 *math.cos(angleC))
-    
-    # print("distC: ", distC)
-    # angleA = math.asin( distC/radarDistance * math.sin(angleC))
+    print("distC: ", distC)
+    angleA = math.asin( distC/radarDistance * math.sin(angleC))
 
-    # print("lidar radians angle:", angleA)
-    # angleA = math.degrees(angleA)
+    print("lidar radians angle:", angleA)
+    angleA = math.degrees(angleA)
     
-    # print("lidar angle:", angleA)
-    # return angleA
+    print("lidar angle:", angleA)
+    return angleA
+    """
     
 
-async def main(port1, port2):
+async def main(port1):
     
     try:
-
         reader, writer = await serial_asyncio.open_serial_connection(url=port1, baudrate=115200)
     except:
         print("Could not find device attached to port: ", port1)
@@ -198,12 +180,15 @@ async def main(port1, port2):
     radarDetectEnd = 0
     prevTime = 0
     
+    radarAngle = 30
+    
     while True:
         
         if lidarReady:
             # pass
             lidarReady = await sendLidar(writer, lidarQueue)
-        
+            
+        # msg = "a"
         # msg = await asyncio.wait_for(recv(reader), timeout=1) 
         msg = await recv(reader)
         
@@ -211,22 +196,28 @@ async def main(port1, port2):
             lidarReady = True
         
         if msg in ['Away', 'Towards']:
-            print(msg)
+            # print(msg)
             if msg == 'Towards':
                 print("need to take picture")
-                # if sensor.sendCamera():
-                #     socket.emit("take img")
-                # else:
-                #     print("bad visibility")
-                #     socket.emit("no vis")
+                if sensor.sendCamera():
+                    # socket.emit("take/img")
+                    print('taking picture')
+                else:
+                    print("bad visibility")
+                    # socket.emit("no vis")
                     
             lidarReady = True
-        
-        if msg[0] == 'R' or msg[0] == 'r':
+            
+        # RADAR
+        print(msg)
+        currTime = round(time.time())
+        if len(msg) > 0 and msg[0] == 'R' or msg[0] == 'r':
             
             radar, radarDistance, radarAngle = msg.split(",")
             radarDistance = int(radarDistance)
             radarAngle = int(radarAngle)
+            
+            
             
             if not radarDetecting and radar == 'R':
                 radarDetecting = True
@@ -235,26 +226,71 @@ async def main(port1, port2):
                 radarDetecting = False
                 radarDetectEnd = radarAngle
                 print("detected object from ", radarDetectStart, " - ", radarDetectEnd)
-                lidarAngle = (radarDetectEnd + radarDetectStart)/2
-                
+                lidarAngle = round((radarDetectEnd + radarDetectStart)/2)
+                print("lidar angle", lidarAngle)
                 lidarAngle = getLidarAngle(radarDistance, lidarAngle)
-                lidarQueue.append(f"L,{lidarAngle},{0}")
+                lidarQueue.append(f"L,{lidarAngle}")
+                
+            emitDistance = radarDistance #if radar == 'R' else 200
+        
+            socket.emit('update/radar', {'angle': radarAngle, 'value': emitDistance})
+        
+        elif len(msg) > 0 and msg[0] == 'W' or msg[0] == 'w':
+            
+            wind, windSpeed = msg.split(",")
+            windSpeed = float(windSpeed)
+            if windSpeed > 0 and windSpeed < 4.5:
+                print("WIND")
+                socket.emit('update/wind', {'time': currTime, 'value': windSpeed, 'msg': 0})
+            elif windSpeed >= 4.5:
+                socket.emit('update/wind', {'time': currTime, 'value': windSpeed, 'msg': 1})
+        
+        elif len(msg) > 0 and msg[0] == 'P':
+            
+            photo, photoVal = msg.split(",")
+            photoVal = float(photoVal)
+            if photoVal > 200:
+                
+                socket.emit('update/solar', {'time': currTime, 'value': photoVal, 'msg': 0})
+            else:
+                socket.emit('update/solar', {'time': currTime, 'value': photoVal, 'msg': 1})
+            
+        # FOR TEST 
+        # socket.emit('update/radar', {'angle': radarAngle, 'value': 200})
+        # radarAngle = (radarAngle + 1) % 180
 
         
         # await addDBLidarMessagesToQueue(lidarQueue)
         
-        """
+        
         currTime = round(time.time())
         # print(currTime)
         # print(prevTime)
-        # print(currTime-prevTime)
-        if currTime - prevTime >= 10:
-            print('going to update')
-            await updateWeather()    
-            prevTime = round(time.time())
+        print(currTime-prevTime)
         
-        await asyncio.sleep(1)
-        """
+        # if (currTime - prevTime) >= 1:
+                           
+        # NEED THIS
+        # if (currTime - prevTime) >= 10:
+        #     print('going to update')
+            # wind = await updateWeather() 
+            # wind = 9    
+            # socket.emit('update/wind', {'time': currTime, 'value': wind})
+            # if len(msg) > 0 and msg[0] == 'P':
+            
+            #     photo, photoVal = msg.split(",")
+            #     photoVal = float(photoVal)
+            #     if photoVal > 100:
+                    
+            #         socket.emit('update/solar', {'time': currTime, 'value': photoVal})
+            #     else:
+            #         socket.emit('update/solar', {'time': currTime, 'value': photoVal})
+          
+            # prevTime = round(time.time())
+        
+        # await asyncio.sleep(0.001)
+        # await asyncio.sleep(0.5)
+        
         
         if DEBUG:
             print(len(lidarQueue))
@@ -282,11 +318,6 @@ async def _main(port1, port2):
 if __name__ == '__main__':
     print('starting to listen on serial ports')
     
-    port1 = sys.argv[1]
+    port = sys.argv[1]
     
-    if len(sys.argv) >= 3:
-        port2 = sys.argv[2]    
-    else:
-        port2 = './COM4'
-        
-    asyncio.run(main(port1, port2))
+    asyncio.run(main(port))

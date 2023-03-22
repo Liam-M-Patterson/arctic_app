@@ -34,8 +34,10 @@ else:
 
 CWD = os.getcwd()
 app = Flask(__name__)
+# app.config['SECRET_KEY'] = 'secret!'
 # CORS(app, resources={r"/*": {"origins": "http://localhost:3000"}})
 CORS(app)
+# socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 intrusionModel = 'yolov3'
@@ -142,7 +144,7 @@ def makeDetectImageRequest(requestDict):
 @socketio.on('take/img') 
 def socket_takeNewImage():
     
-    # print('socket_takeNewImage')
+    print('socket_takeNewImage')
     # TAKE PICTURE, simulated with sending exisiting image
     if PI:
         filename = DB.createImageName()
@@ -162,6 +164,7 @@ def socket_takeNewImage():
     detectedImg = makeDetectImageRequest(imgData)
     imgData = packageImageData(detectedImg)
     socketio.emit('detected img', imgData)
+
     
 @app.route('/api/detect/img', methods=["GET", "POST"])
 def getDetectImage():
@@ -240,6 +243,7 @@ def getDetectedImage():
     return send_file(file)
     
     
+
 # Socket Hooks
 @socketio.on('connect')
 def handle_connect():
@@ -256,35 +260,86 @@ def disconnect():
 def handleLiam():
     print('socket is listening ')
     socketio.emit('message', 'THIS IS FROM FLASK!!')
+    
+solarData = []
+solarLabels = []
+@socketio.on('update/solar')
+def updatesolar(data):
+    # socketio.emit("solar", data)
+    print("new solar", data)
+    solarData.append(data['value'])
+    solarLabels.append(data['time'])
+    
+    if len(solarData) > 15:
+        solarData.pop(0)
+        solarLabels.pop(0)
+        
+    socketio.emit('solar', {
+        "msg": 'Too Dark for Solar Cells' if data['msg'] != 0 else '',
+        "icon": "default",
+        'title': 'Solar Energy',
+        'dataPoints': solarData,
+        'labels': solarLabels,
+        'tooltipLabel': 'km/h',
+    })
 
+windData = []
+windLabels = []
+@socketio.on('update/wind')
+def updateWind(data):
+    # socketio.emit("wind", data)
+    windData.append(data['value'])
+    windLabels.append(data['time'])
+    
+    if len(windData) > 15:
+        windData.pop(0)
+        windLabels.pop(0)
+        
+    socketio.emit('wind', {
+        "msg": 'Too Windy For Wind Turbine. Turn on Brakes.' if data['msg'] != 0 else '',
+        "icon": "default",
+        'title': 'Wind Energy',
+        'dataPoints': windData,
+        'labels': windLabels,
+        'tooltipLabel': 'km/h',
+    })
+    
+@socketio.on('update/radar')
+def updateRadar(data):
+    # print(data)
+    socketio.emit('radar', data)
 
 @app.route('/api/status/solar', methods=["GET"])
 def statusSolar():
     
-    dataPoints = [random.randint(0, 100) for i in range(9)]
-    labels = ['Jan', 'Feb', 'March', 'April', 'May', 'June', 'July', 'August']
+    # dataPoints = [random.randint(0, 100) for i in range(9)]
+    # labels = ['Jan', 'Feb', 'March', 'April', 'May', 'June', 'July', 'August']
+    
+    dataPoints = []
     return {
-        "direction": 'top',
+        "msg": '',
         "icon": "default",
         'title': 'Solar Energy',
-        'dataPoints': dataPoints,
-        'labels': labels,
+        'dataPoints': solarData,
+        'labels': solarLabels,
         'tooltipLabel': 'UV Index',
     }
 
 @app.route('/api/status/wind', methods=["GET"])
 def statusWind():
-    dataPoints = [ random.randint(37, 100) for i in range(9)]
-    labels = ['Jan', 'Feb', 'March', 'April', 'May', 'June', 'July', 'August']
+    # dataPoints = [ random.randint(37, 100) for i in range(9)]
+    # labels = ['Jan', 'Feb', 'March', 'April', 'May', 'June', 'July', 'August']
+    
     return {
-        "direction": 'top',
+        "msg": '',
         "icon": "default",
         'title': 'Wind Energy',
-        'dataPoints': dataPoints,
-        'labels': labels,
+        'dataPoints': windData,
+        'labels': windLabels,
         'tooltipLabel': 'km/h',
     }
 
+"""
 @app.route('/api/status/battery', methods=["GET"])
 def statusBattery():
     dataPoints = [ random.randint(37, 100) for i in range(9)]
@@ -344,14 +399,19 @@ def updateLED():
 def weather():
     return db.weather.getWeather()
 
+"""
+
 @app.route('/api/liam', methods=["GET"])
 def liam():
     
-    return {'state': '2'}
+    return {'state': '23'}
 
 if __name__ == '__main__':
     # tracemalloc.start()
     # app.run(debug=True, host='0.0.0.0')
     socketio.run(app, port=5000)
+    # socketio.run(app, port=5000, websocket=True)
+    
+    
     
     

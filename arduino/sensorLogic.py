@@ -125,14 +125,15 @@ def weatherControl():
 
 def processRadar(rad_dist, rad_deg):
     if rad_dist <= 80:
-        x = sendLidar(rad_dist, rad_deg)
+        x = sendLidar(rad_deg)
         return x
     else:
         x = "FAR"
         return x
 
-def sendLidar(li_dist, li_deg):
-    x = f"L,{li_dist},{li_deg}"
+def sendLidar(li_deg):
+    # x = f"L,{li_dist},{li_deg}"
+    x = f"L,{li_deg}"
     return x
 
 def sendCamera():

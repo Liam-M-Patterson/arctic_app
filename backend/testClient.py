@@ -15,6 +15,7 @@ async def init():
 
 async def main():
     
+    
     sio = await init()
     
     await sio.emit('take img')
@@ -36,16 +37,26 @@ async def main():
     #     sio.emit('liam')
 
 if __name__ == '__main__':
+    
+    sio = socketio.Client()
+    # server = 'http://10.34.0.11:5000'
+    server = 'http://localhost:5000'
+    # server  = 'ws://arctic.lhr.rocks/ws'
+    sio.connect(server)
+    print('connected')
+           
+    # print('done test client')
+    
     # asyncio.run(main())
     
-    angle = sys.argv[1]
+    # angle = sys.argv[1]
     
     
-    msgs = DB.getLidarMessages(datetime.datetime.utcnow())
-    print(msgs)
+    # msgs = DB.getLidarMessages(datetime.datetime.utcnow())
+    # print(msgs)
     
-    DB.addMessagetoSendArduino(sensor.sendLidar(10, angle))
+    # DB.addMessagetoSendArduino(sensor.sendLidar(10, angle))
     
-    msgs = DB.getLidarMessages(datetime.datetime.utcnow())
-    for msg in msgs:
-        print(msg[1])
+    # msgs = DB.getLidarMessages(datetime.datetime.utcnow())
+    # for msg in msgs:
+    #     print(msg[1])
